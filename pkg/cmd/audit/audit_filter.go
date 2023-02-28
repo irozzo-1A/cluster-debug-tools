@@ -325,6 +325,14 @@ func (f *FilterByDuration) Matches(event *auditv1.Event) bool {
 	return event.StageTimestamp.Sub(event.RequestReceivedTimestamp.Time) <= f.Duration
 }
 
+type FilterByMinDuration struct {
+	Duration time.Duration
+}
+
+func (f *FilterByMinDuration) Matches(event *auditv1.Event) bool {
+	return event.StageTimestamp.Sub(event.RequestReceivedTimestamp.Time) > f.Duration
+}
+
 type FilterByAnnotationPresence struct {
 	AnnotationKey string
 }

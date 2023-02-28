@@ -57,6 +57,7 @@ type AuditOptions struct {
 	afterString       string
 	stages            []string
 	duration          string
+	minDuration       string
 	podsecurityfilter string
 
 	genericclioptions.IOStreams
@@ -112,6 +113,7 @@ func NewCmdAudit(parentName string, streams genericclioptions.IOStreams) *cobra.
 	cmd.Flags().StringVar(&o.afterString, "after", o.afterString, "Filter result of search to only after a timestamp.)")
 	cmd.Flags().StringSliceVarP(&o.stages, "stage", "s", o.stages, "Filter result by event stage (eg. 'RequestReceived', 'ResponseComplete'), if omitted all stages will be included)")
 	cmd.Flags().StringVar(&o.duration, "duration", o.duration, "Filter all requests that didn't take longer than the specified timeout to complete. Keep in mind that requests usually don't take exactly the specified time. Adding a second or two should give you what you want.")
+	cmd.Flags().StringVar(&o.minDuration, "min-duration", o.duration, "Filter all requests that took longer than the specified duration to complete. Keep in mind that requests usually don't take exactly the specified time. Adding a second or two should give you what you want.")
 	cmd.Flags().StringVar(&o.podsecurityfilter, "podsecurityviolations", "", "Filter pod security admission violations. Possible values: 'pod', 'all'; for either pod violations only, or violations of both pods and pod controllers")
 
 	return cmd
@@ -144,6 +146,12 @@ func (o *AuditOptions) Validate() error {
 	if len(o.duration) > 0 {
 		if _, err := time.ParseDuration(o.duration); err != nil {
 			return fmt.Errorf("incorrect duration specified, err %v", err)
+		}
+	}
+
+	if len(o.minDuration) > 0 {
+		if _, err := time.ParseDuration(o.minDuration); err != nil {
+			return fmt.Errorf("incorrect min duration specified, err %v", err)
 		}
 	}
 
@@ -253,6 +261,13 @@ func (o *AuditOptions) Run() error {
 			return err
 		}
 		filters = append(filters, &FilterByDuration{d})
+	}
+	if len(o.minDuration) > 0 {
+		d, err := time.ParseDuration(o.minDuration)
+		if err != nil {
+			return err
+		}
+		filters = append(filters, &FilterByMinDuration{d})
 	}
 
 	if psaFilterType := o.podsecurityfilter; len(psaFilterType) > 0 {
